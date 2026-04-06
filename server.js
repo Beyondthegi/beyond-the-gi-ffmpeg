@@ -11,7 +11,6 @@ const upload = multer({ dest: 'uploads/' });
 app.use(cors());
 app.use(express.json());
 
-// Main endpoint: extract frames from video
 app.post('/extract-frames', upload.single('video'), (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: 'No video uploaded' });
@@ -24,18 +23,15 @@ app.post('/extract-frames', upload.single('video'), (req, res) => {
   fs.mkdirSync(outputDir, { recursive: true });
 
   ffmpeg(videoPath)
-    .outputOptions(['-vf fps=0.5'])           // 1 frame every 2 seconds (change to fps=1 for every 1 second)
+    .outputOptions(['-vf fps=0.5'])
     .save(path.join(outputDir, 'frame_%04d.png'))
     .on('end', () => {
       const files = fs.readdirSync(outputDir);
       res.json({
         success: true,
-        framesFolder: outputDir,
         frameCount: files.length,
         frames: files.map(f => `${outputDir}/${f}`)
       });
-
-      // Clean up uploaded video
       fs.unlinkSync(videoPath);
     })
     .on('error', (err) => {
