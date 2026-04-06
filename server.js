@@ -6,13 +6,19 @@ const fs = require('fs');
 const path = require('path');
 
 const app = express();
-const upload = multer({ dest: 'uploads/' });
+
+// Increase limits for larger video uploads
+const upload = multer({
+  dest: 'uploads/',
+  limits: { fileSize: 500 * 1024 * 1024 }   // 500 MB limit
+});
 
 app.use(cors());
 app.use(express.json());
 
-// More robust endpoint
 app.post('/extract-frames', upload.any(), (req, res) => {
+  console.log('Received request. Files received:', req.files ? req.files.length : 0);
+
   if (!req.files || req.files.length === 0) {
     return res.status(400).json({ error: 'No video uploaded' });
   }
@@ -31,7 +37,7 @@ app.post('/extract-frames', upload.any(), (req, res) => {
     .save(path.join(outputDir, 'frame_%04d.png'))
     .on('end', () => {
       const files = fs.readdirSync(outputDir);
-      console.log(`Extracted ${files.length} frames`);
+      console.log(`Successfully extracted ${files.length} frames`);
       res.json({
         success: true,
         frameCount: files.length,
