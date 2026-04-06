@@ -11,7 +11,7 @@ const upload = multer({ dest: 'uploads/' });
 app.use(cors());
 app.use(express.json());
 
-// Accept ANY field name (fixes the Multer "Unexpected field" error)
+// More robust endpoint
 app.post('/extract-frames', upload.any(), (req, res) => {
   if (!req.files || req.files.length === 0) {
     return res.status(400).json({ error: 'No video uploaded' });
@@ -21,23 +21,26 @@ app.post('/extract-frames', upload.any(), (req, res) => {
   const videoPath = videoFile.path;
   const timestamp = Date.now();
   const outputDir = path.join('frames', timestamp.toString());
-  
+
   fs.mkdirSync(outputDir, { recursive: true });
 
+  console.log(`Processing video: ${videoFile.originalname} (${videoFile.size} bytes)`);
+
   ffmpeg(videoPath)
-    .outputOptions(['-vf fps=0.5'])           // 1 frame every 2 seconds
+    .outputOptions(['-vf fps=0.5'])
     .save(path.join(outputDir, 'frame_%04d.png'))
     .on('end', () => {
       const files = fs.readdirSync(outputDir);
+      console.log(`Extracted ${files.length} frames`);
       res.json({
         success: true,
         frameCount: files.length,
         frames: files.map(f => `${outputDir}/${f}`)
       });
-      fs.unlinkSync(videoPath); // clean up
+      fs.unlinkSync(videoPath);
     })
     .on('error', (err) => {
-      console.error(err);
+      console.error('FFmpeg error:', err);
       res.status(500).json({ error: err.message });
       fs.unlinkSync(videoPath);
     });
